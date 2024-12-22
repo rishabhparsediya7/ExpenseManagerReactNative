@@ -5,13 +5,13 @@ import { ThemedView } from "@/components/ThemedView";
 import { getCurrentMonthDates, getWeekDatesRangeIST } from "@/utils/dateUtil";
 import Entypo from "@expo/vector-icons/Entypo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import moment from "moment-timezone";
-import { useEffect, useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Image, StyleSheet } from "react-native";
 import { TouchableOpacity } from "react-native-gesture-handler";
 
-export default function HomeScreen() {
+const HomeScreen = () => {
   const [loading, setLoading] = useState(false);
   const { firstDay, lastDay } = getCurrentMonthDates();
   const { startOfWeek, lastOfWeek } = getWeekDatesRangeIST();
@@ -32,32 +32,39 @@ export default function HomeScreen() {
     },
   ];
 
-  const fetchData = async () => {
-    const email = await AsyncStorage.getItem("email");
-    try {
-      setLoading(true);
-      const response = await axiosInstance.get(
-        `/api/expense/totalSpends?email=${email}&dateRanges=${encodeURIComponent(
-          JSON.stringify(dateRanges)
-        )}`
-      );
-      if (response?.status === 200) {
-        const data = response?.data?.totals;
-        console.log("🚀 ~ fetchData ~ data:", data);
-        setSpendings(data);
-      } else {
-        console.log("....");
-      }
-    } catch (error) {
-      console.log("🚀 ~ fetchData ~ error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useFocusEffect(
+    useCallback(() => {
+      const fetchData = async () => {
+        const email = await AsyncStorage.getItem("email");
+        try {
+          setLoading(true);
+          const response = await axiosInstance.get(
+            `/api/expense/totalSpends?email=${email}&dateRanges=${encodeURIComponent(
+              JSON.stringify(dateRanges)
+            )}`
+          );
+          if (response?.status === 200) {
+            const data = response?.data?.totals;
+            console.log("🚀 ~ fetchData ~ data:", data);
+            setSpendings(data);
+          } else {
+            console.log("....");
+          }
+        } catch (error) {
+          console.log("🚀 ~ fetchData ~ error:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+      fetchData();
+
+      return () => {
+        console.log("Screen lost focus, cleanup here if needed");
+      };
+    }, [])
+  );
+
   return (
     <ThemedView
       style={{
@@ -182,8 +189,9 @@ export default function HomeScreen() {
       </ParallaxScrollView>
     </ThemedView>
   );
-}
+};
 
+export default HomeScreen;
 const styles = StyleSheet.create({
   image: {
     width: "100%",
